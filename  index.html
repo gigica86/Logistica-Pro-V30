@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logistica Pro V30 - Professional Sync</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root { --primary: #243447; --accent: #0056b3; --success: #1b5e20; --warning: #ffca28; --bg: #f4f7f6; --input-fill: #e8f5e9; --danger: #d32f2f; --archive: #455a64; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); margin: 0; padding-bottom: 50px; font-size: 11px; color: #333; }
+        #notification-banner { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 20px 40px; border-radius: 10px; display: none; z-index: 9999; box-shadow: 0 10px 20px rgba(0,0,0,0.3); font-weight: bold; font-size: 16px; text-align: center; }
+        #main-view, #archive-view { display: none; }
+        #top-bar { background: white; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
+        .container { width: 98%; margin: 10px auto; }
+        table { width: 100%; border-collapse: collapse; background: white; table-layout: fixed; margin-bottom: 10px; }
+        th { background: #eceff1; color: #455a64; padding: 5px; border: 1px solid #cfd8dc; font-size: 9px; text-transform: uppercase; }
+        td { border: 1px solid #cfd8dc; padding: 3px; vertical-align: top; overflow: hidden; }
+        .col-sel { width: 30px; } .col-cli { width: 200px; } .col-addr { width: 200px; } .col-com { width: 130px; } .col-tel { width: 110px; } .col-fasc { width: 40px; } .col-tot { width: 60px; } .col-action { width: 55px; text-align: center; }
+        .day-container { background: white; border-radius: 4px; margin-bottom: 30px; border: 1px solid #cfd8dc; }
+        .day-header { background: var(--primary); color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; }
+        input.editable { background-color: var(--input-fill) !important; border: 1px solid #c8e6c9 !important; border-radius: 2px; padding: 4px; width: 100%; box-sizing: border-box; font-size: 10px; }
+        .btn { padding: 5px 8px; border-radius: 4px; border: none; cursor: pointer; font-size: 10px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
+        .startup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .startup-card { background: white; padding: 30px; border-radius: 12px; text-align: center; width: 450px; }
+        .file-box { border: 2px dashed #ccc; padding: 20px; margin: 15px 0; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .file-box.loaded { border-color: var(--success); background: #e8f5e9; color: var(--success); border-style: solid; }
+        #date-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center; }
+    </style>
+</head>
+<body>
+
+<div id="notification-banner"></div>
+
+<div id="date-modal">
+    <div style="background:white; padding:25px; border-radius:10px; text-align:center; box-shadow:0 5px 15px rgba(0,0,0,0.3)">
+        <h3 style="margin-top:0">Seleziona Data Consegna</h3>
+        <input type="date" id="calendar-input" style="padding:10px; font-size:16px; margin-bottom:20px; width:100%">
+        <div style="display:flex; gap:10px; justify-content:center">
+            <button class="btn" style="background:#ccc; padding:10px 20px" onclick="closeDateModal()">Annulla</button>
+            <button class="btn" style="background:var(--accent); color:white; padding:10px 20px" onclick="confirmDateSelection()">Conferma</button>
+        </div>
+    </div>
+</div>
+
+<div id="startup-overlay" class="startup-overlay">
+    <div class="startup-card">
+        <h2 style="color: var(--accent); margin:0">🚀 Logistica Pro V30</h2>
+        <p style="font-size: 10px; color: #666;">Sistema di Sincronizzazione Professionale</p>
+        <div id="boxExcel" class="file-box" onclick="document.getElementById('initExcel').click()">
+            <span id="textExcel">1. SELEZIONA LISTINO (EXCEL)</span>
+            <input type="file" id="initExcel" accept=".xlsx, .xls" style="display:none" onchange="handleExcelLoad(this)">
+        </div>
+        <div id="boxJson" class="file-box" onclick="pickJsonFile()">
+            <span id="textJson">2. SELEZIONA DATABASE (JSON)</span>
+        </div>
+        <button id="btn-start" class="btn" style="background:var(--accent); color:white; padding: 15px; width: 100%; font-size: 14px;" onclick="finalizeStartup()" disabled>AVVIA SISTEMA</button>
+    </div>
+</div>
+
+<div id="main-view">
+    <div id="top-bar" class="no-print">
+        <div style="display:flex; align-items:center; gap:10px">
+            <b style="font-size: 15px;">LOGISTICA PRO V30</b>
+            <button class="btn" style="background:var(--archive); color:white" onclick="showArchivePage()">📂 ARCHIVIO</button>
+        </div>
+        <div style="display:flex; gap:5px">
+            <button class="btn" style="background:var(--success); color:white; padding: 8px 15px;" onclick="requestSave()">💾 SALVA BACKUP</button>
+            <button class="btn" style="background:#7f8c8d; color:white" onclick="pickJsonFile(true)">🔄 CAMBIA PERCORSO</button>
+            <button class="btn" style="background:var(--accent); color:white" onclick="openDateModal()">🚚 PIANIFICA</button>
+        </div>
+    </div>
+    <div class="container">
+        <div id="waiting-area" class="no-print">
+            <div style="background:var(--warning); padding:10px; font-weight:bold; display:flex; justify-content:space-between">
+                <span>📦 ORDINI IN ATTESA</span>
+                <button class="btn" style="background:white; color:black" onclick="addWaitingClient()">+ Nuova Vendita</button>
+            </div>
+            <table>
+                <thead>
+                    <tr><th class="col-sel">Sel.</th><th class="col-cli">Cliente</th><th class="col-addr">Indirizzo</th><th class="col-com">Comune</th><th class="col-tel">Tel</th><th class="col-fasc">Fasc.</th><th>Prodotti</th><th class="col-tot">Totale</th><th class="col-action">Azioni</th></tr>
+                </thead>
+                <tbody id="waiting-body"></tbody>
+            </table>
+        </div>
+        <div id="mainContainer"></div>
+    </div>
+</div>
+
+<div id="archive-view">
+    <div id="top-bar" class="no-print" style="background: var(--archive)">
+        <button class="btn" style="background:white; color:var(--archive)" onclick="showMainPage()">⬅️ TORNA</button>
+        <b style="color:white">ARCHIVIO STORICO</b>
+        <button class="btn" style="background:#e74c3c; color:white" onclick="exportArchivePDF()">📄 ESPORTA PDF FILTRATO</button>
+    </div>
+    <div class="container">
+        <div style="background:#fff; padding:10px; margin-bottom:10px; display:flex; gap:10px; align-items:center" class="no-print">
+            <span>Filtra per:</span>
+            <input type="text" id="fName" class="editable" style="width:150px" placeholder="Nome Cliente..." oninput="renderArchive()">
+            <input type="text" id="fD" class="editable" style="width:40px" placeholder="GG" oninput="renderArchive()">
+            <input type="text" id="fM" class="editable" style="width:40px" placeholder="MM" oninput="renderArchive()">
+            <input type="text" id="fY" class="editable" style="width:60px" placeholder="AAAA" oninput="renderArchive()">
+        </div>
+        <table>
+            <thead>
+                <tr><th style="width:80px">Data</th><th class="col-cli">Cliente</th><th>Indirizzo / Comune</th><th class="col-tel">Telefono</th><th>Prodotti</th><th class="col-tot">Totale</th><th class="no-print col-action">Azioni</th></tr>
+            </thead>
+            <tbody id="archive-table-body"></tbody>
+        </table>
+        <div style="text-align:right; font-weight:bold; padding:15px; background:white; border:1px solid #ccc; font-size:14px;">
+            TOTALE FILTRATO: € <span id="total-visible-archive">0.00</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    let productDatabase = [];
+    let archivedDays = [];
+    let fileHandle = null;
+    let initialData = null;
+
+    function notify(msg) { const n = document.getElementById('notification-banner'); n.innerText = msg; n.style.display = 'block'; setTimeout(() => n.style.display = 'none', 2500); }
+
+    function sortDays() {
+        const container = document.getElementById('mainContainer');
+        const days = Array.from(container.querySelectorAll('.day-container'));
+        days.sort((a, b) => {
+            const [dA, mA, yA] = a.querySelector('.day-date-val').innerText.split('/');
+            const [dB, mB, yB] = b.querySelector('.day-date-val').innerText.split('/');
+            return new Date(yA, mA - 1, dA) - new Date(yB, mB - 1, dB);
+        });
+        days.forEach(d => container.appendChild(d));
+    }
+
+    async function pickJsonFile(isReselect = false) { 
+        try { 
+            [fileHandle] = await window.showOpenFilePicker({ 
+                types: [{ description: 'JSON', accept: {'application/json': ['.json']} }],
+                multiple: false
+            }); 
+            const file = await fileHandle.getFile(); 
+            initialData = JSON.parse(await file.text()); 
+            
+            document.getElementById('boxJson').classList.add('loaded'); 
+            document.getElementById('textJson').innerText = "✅ DATABASE CARICATO: " + file.name; 
+            
+            if(!isReselect) checkReady(); 
+            else notify("✅ Percorso file aggiornato!");
+        } catch (e) { 
+            console.error(e);
+            notify("❌ Selezione annullata");
+        } 
+    }
+    
+    function handleExcelLoad(input) { const reader = new FileReader(); reader.onload = (e) => { const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'}); productDatabase = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]).map(i => { let n = {}; for (let k in i) n[k.toLowerCase().trim()] = i[k]; return n; }); document.getElementById('boxExcel').classList.add('loaded'); document.getElementById('textExcel').innerText = "✅ LISTINO CARICATO"; checkReady(); }; reader.readAsArrayBuffer(input.files[0]); }
+    
+    function checkReady() { if (initialData && productDatabase.length > 0) document.getElementById('btn-start').disabled = false; }
+    
+    function finalizeStartup() { 
+        if (initialData.backlog) initialData.backlog.reverse().forEach(c => addWaitingClient(c, 'waiting-body')); 
+        if (initialData.activeDays) {
+            initialData.activeDays.forEach(day => {
+                const dId = Date.now() + Math.random();
+                renderDayBlock(dId, day.date);
+                day.clients.reverse().forEach(c => addWaitingClient(c, `tbody-${dId}`));
+            });
+        }
+        archivedDays = initialData.archive || []; 
+        sortDays(); 
+        document.getElementById('startup-overlay').style.display = 'none'; 
+        document.getElementById('main-view').style.display = 'block'; 
+        recalcAll(); 
+    }
+    
+    async function requestSave() { 
+        if (!fileHandle) {
+            alert("Nessun file selezionato! Per favore, seleziona il file JSON.");
+            await pickJsonFile();
+            return;
+        }
+        
+        const data = { 
+            backlog: Array.from(document.querySelectorAll('#waiting-body .client-row')).map(row => getRowData(row)), 
+            activeDays: Array.from(document.querySelectorAll('.day-container')).map(block => ({ 
+                date: block.querySelector('.day-date-val').innerText, 
+                clients: Array.from(block.querySelectorAll('.client-row')).map(row => getRowData(row)) 
+            })), 
+            archive: archivedDays 
+        }; 
+
+        try { 
+            const options = { mode: 'readwrite' };
+            if ((await fileHandle.queryPermission(options)) !== 'granted') {
+                if ((await fileHandle.requestPermission(options)) !== 'granted') {
+                    throw new Error("Permessi negati");
+                }
+            }
+
+            const writable = await fileHandle.createWritable(); 
+            await writable.write(JSON.stringify(data, null, 2)); 
+            await writable.close(); 
+            notify("💾 Backup aggiornato su " + (await fileHandle.getFile()).name);
+        } catch (e) { 
+            console.error(e);
+            alert("ERRORE DI SCRITTURA: Connessione al file interrotta o permessi scaduti.\n\nSeleziona nuovamente il file nella finestra che si aprirà per ripristinare il salvataggio.");
+            await pickJsonFile(true); 
+            if(fileHandle) await requestSave();
+        } 
+    }
+
+    function openDateModal() {
+        const sel = document.querySelectorAll('.client-sel:checked');
+        if (sel.length === 0) return alert("Seleziona ordini!");
+        document.getElementById('calendar-input').valueAsDate = new Date();
+        document.getElementById('date-modal').style.display = 'flex';
+    }
+
+    function closeDateModal() { document.getElementById('date-modal').style.display = 'none'; }
+
+    async function confirmDateSelection() {
+        const rawDate = document.getElementById('calendar-input').value;
+        if(!rawDate) return alert("Scegli una data!");
+        const [y, m, d] = rawDate.split('-');
+        const formattedDate = `${d}/${m}/${y}`;
+        closeDateModal();
+        createNewDayFromSelected(formattedDate);
+    }
+
+    async function createNewDayFromSelected(date) { 
+        const sel = document.querySelectorAll('.client-sel:checked');
+        const archIdx = archivedDays.findIndex(a => a.date === date);
+        if (archIdx !== -1) {
+            if(confirm(`Il giorno ${date} è già archiviato. Vuoi ripristinarlo per aggiungere questi ordini?`)) {
+                const restored = archivedDays[archIdx];
+                const dId = Date.now() + Math.random();
+                renderDayBlock(dId, date);
+                restored.clients.forEach(c => addWaitingClient(c, `tbody-${dId}`));
+                archivedDays.splice(archIdx, 1);
+            } else { return; }
+        }
+
+        let existingDay = Array.from(document.querySelectorAll('.day-container')).find(block => block.querySelector('.day-date-val').innerText === date); 
+        let targetTbodyId = null;
+        if (existingDay) { targetTbodyId = existingDay.querySelector('tbody').id; } 
+        else { 
+            const dId = Date.now() + Math.random(); 
+            renderDayBlock(dId, date); 
+            targetTbodyId = `tbody-${dId}`;
+        } 
+
+        sel.forEach(cb => { 
+            const row = cb.closest('.client-row'); 
+            cb.checked = false; 
+            row.querySelector('.col-sel-cell')?.remove(); 
+            const targetTbody = document.getElementById(targetTbodyId); 
+            targetTbody.insertBefore(row, targetTbody.firstChild); 
+            row.querySelector('.move-btns').style.display = 'inline-block'; 
+        }); 
+        sortDays(); recalcAll(); await requestSave(); 
+    }
+
+    function renderDayBlock(dId, date) {
+        const div = document.createElement('div');
+        div.className = 'day-container';
+        div.id = `day-block-${dId}`;
+        div.innerHTML = ` <div class="day-header no-print"> <b>🚚 GIRO: <span class="day-date-val">${date}</span></b> <div> <button class="btn" style="background:#27ae60; color:white" onclick="archiveDay('${dId}')">📥 ARCHIVIA</button> <button class="btn" style="background:#e67e22; color:white" onclick="exportDayPDF('${dId}', '${date}')">📄 PDF</button> <button class="btn" style="background:var(--danger); color:white" onclick="deleteFullDay('${dId}')">🗑️ ELIMINA</button> </div> </div> <table> <thead> <tr> <th class="col-cli">Cliente</th><th class="col-addr">Indirizzo</th><th class="col-com">Comune</th><th class="col-tel">Tel</th><th class="col-fasc">Fasc.</th><th>Prodotti</th><th class="col-tot">Totale</th><th class="col-action">Azioni</th> </tr> </thead> <tbody id="tbody-${dId}"></tbody> </table> <div style="padding:8px; text-align:right; font-weight:bold">TOTALE GIRO: € <span class="day-tot-val">0.00</span></div> `;
+        document.getElementById('mainContainer').appendChild(div);
+    }
+
+    function addWaitingClient(data = null, targetTbodyId = 'waiting-body') {
+        const tr = document.createElement('tr');
+        tr.className = "client-row";
+        const isBacklog = targetTbodyId === 'waiting-body';
+        tr.innerHTML = ` ${isBacklog ? `<td class="col-sel-cell" style="text-align:center"><input type="checkbox" class="client-sel"></td>` : ''} <td><input type="text" class="c-name editable" value="${data?.name || ''}"></td> <td><input type="text" class="c-addr editable" value="${data?.addr || ''}"></td> <td><input type="text" class="c-city editable" value="${data?.city || ''}"></td> <td><input type="text" class="c-tel editable" value="${data?.tel || ''}"></td> <td><input type="text" class="c-time editable" value="${data?.time || ''}"></td> <td style="padding:0"> <table style="width:100%"><tbody class="prod-body"></tbody></table> <button class="no-print" onclick="addProductRow(this)" style="width:100%; border:none; background:#eee; cursor:pointer; font-size:9px">+ Prodotto</button> </td> <td style="text-align:right; font-weight:bold">€ <span class="c-total-val">0.00</span></td> <td class="no-print col-action"> <div class="move-btns" style="display:${isBacklog ? 'none' : 'block'}"> <button class="btn btn-move" onclick="moveRow(this, -1)">↑</button> <button class="btn btn-move" onclick="moveRow(this, 1)">↓</button> </div> <div style="display:flex; justify-content:center; gap:2px; margin-top:3px"> <button class="btn" style="background:var(--success); color:white" onclick="requestSave()">💾</button> <button class="btn" style="background:var(--danger); color:white" onclick="deleteRow(this)">X</button> </div> </td> `;
+        document.getElementById(targetTbodyId).insertBefore(tr, document.getElementById(targetTbodyId).firstChild);
+        if (data?.products) data.products.forEach(p => addProductRow(tr.querySelector('.no-print'), p));
+        else addProductRow(tr.querySelector('.no-print'));
+        recalcAll();
+    }
+
+    async function addProductRow(btn, data = null) {
+        const tbody = btn.previousElementSibling.querySelector('tbody');
+        const tr = document.createElement('tr');
+        tr.innerHTML = ` <td style="width:40px"><input type="text" class="p-cod editable" value="${data?.cod || ''}" onchange="lookup(this)"></td> <td style="width:160px"><input type="text" class="p-desc editable" value="${data?.desc || ''}"></td> <td style="width:40px"><input type="number" class="p-cost-input editable" value="${data?.price || '0.00'}" oninput="recalcAll()"></td> <td style="width:50px"><input type="text" class="p-note editable" placeholder="Note" value="${data?.note || ''}"></td> <td style="width:20px; text-align:center"><button style="cursor:pointer; border:none; background:transparent; color:red; font-weight:bold" onclick="removeProd(this)">X</button></td> `;
+        tbody.appendChild(tr);
+        recalcAll();
+    }
+
+    async function removeProd(el) { if(confirm("Eliminare prodotto?")) { el.closest('tr').remove(); recalcAll(); await requestSave(); } }
+    function lookup(el) { const item = productDatabase.find(p => String(p.codice) === el.value.trim()); if (item) { const tr = el.parentElement.parentElement; tr.querySelector('.p-desc').value = item.descrizione || ""; tr.querySelector('.p-cost-input').value = parseFloat(item.costo || 0).toFixed(2); recalcAll(); } }
+    function recalcAll() { document.querySelectorAll('.client-row').forEach(row => { let sub = 0; row.querySelectorAll('.p-cost-input').forEach(i => sub += parseFloat(i.value) || 0); row.querySelector('.c-total-val').innerText = sub.toFixed(2); }); document.querySelectorAll('.day-container').forEach(day => { let daySum = 0; day.querySelectorAll('.c-total-val').forEach(v => daySum += parseFloat(v.innerText) || 0); day.querySelector('.day-tot-val').innerText = daySum.toFixed(2); }); }
+    async function moveRow(btn, direction) { const row = btn.closest('.client-row'); const tbody = row.parentElement; if (direction === -1 && row.previousElementSibling) tbody.insertBefore(row, row.previousElementSibling); else if (direction === 1 && row.nextElementSibling) tbody.insertBefore(row.nextElementSibling, row); await requestSave(); }
+    
+    async function deleteRow(btn) { 
+        const row = btn.closest('.client-row');
+        const isFromGiro = row.parentElement.id !== 'waiting-body';
+        if (confirm(isFromGiro ? "Spostare l'ordine negli 'Ordini in Attesa'?" : "Eliminare l'ordine?")) { 
+            if (isFromGiro) addWaitingClient(getRowData(row), 'waiting-body');
+            row.remove(); 
+            recalcAll(); 
+            await requestSave(); 
+        } 
+    }
+
+    async function deleteFullDay(dId) { 
+        const block = document.getElementById(`day-block-${dId}`);
+        if(confirm("Eliminare il giro? Gli ordini torneranno in attesa.")) { 
+            block.querySelectorAll('.client-row').forEach(r => addWaitingClient(getRowData(r), 'waiting-body'));
+            block.remove(); 
+            await requestSave(); 
+        } 
+    }
+
+    async function archiveDay(dId) { if(!confirm("Archiviare?")) return; const block = document.getElementById(`day-block-${dId}`); archivedDays.push({ date: block.querySelector('.day-date-val').innerText, clients: Array.from(block.querySelectorAll('.client-row')).map(row => getRowData(row)) }); block.remove(); await requestSave(); }
+
+    function getRowData(row) {
+        return {
+            name: row.querySelector('.c-name').value,
+            addr: row.querySelector('.c-addr').value,
+            city: row.querySelector('.c-city').value,
+            tel: row.querySelector('.c-tel').value,
+            time: row.querySelector('.c-time').value,
+            total: parseFloat(row.querySelector('.c-total-val').innerText) || 0,
+            products: Array.from(row.querySelectorAll('.prod-body tr')).map(p => ({
+                cod: p.querySelector('.p-cod').value,
+                desc: p.querySelector('.p-desc').value,
+                price: p.querySelector('.p-cost-input').value,
+                note: p.querySelector('.p-note').value
+            }))
+        };
+    }
+
+    function exportDayPDF(dId, date) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+        const rows = [];
+        let grandTotal = 0;
+        const container = document.getElementById(`day-block-${dId}`);
+        const clients = Array.from(container.querySelectorAll('.client-row'));
+
+        clients.forEach(c => {
+            const data = getRowData(c);
+            const prods = data.products.map(p => `${p.cod} - ${p.desc} (${p.note || ''})`).join('\n');
+            rows.push([date, data.name, data.addr, data.city, data.tel, data.time, prods, "€ " + data.total.toFixed(2)]);
+            grandTotal += data.total;
+        });
+
+        doc.setFontSize(16); doc.setFont(undefined, 'bold');
+        doc.text("PROGRAMMA CONSEGNE: " + date, 14, 15);
+
+        doc.autoTable({
+            head: [['Data', 'Cliente', 'Indirizzo', 'Comune', 'Tel', 'Fasc.', 'Prodotti (Cod | Descrizione | € | Note)', 'Totale']],
+            body: rows,
+            startY: 22,
+            theme: 'grid',
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [69, 90, 100], textColor: 255 },
+            foot: [['', '', '', '', '', '', 'TOTALE GIRO:', '€ ' + grandTotal.toFixed(2)]],
+            footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' },
+            columnStyles: { 
+                0: { cellWidth: 20 }, 
+                4: { cellWidth: 25 }, 
+                5: { cellWidth: 15 }, 
+                6: { cellWidth: 85 }, 
+                7: { halign: 'right', cellWidth: 30 } 
+            }
+        });
+        doc.save(`Giro_Consegne_${date.replace(/\//g, '-')}.pdf`);
+    }
+
+    function exportArchivePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+        const rows = [];
+        let grandTotal = 0;
+        const fN = document.getElementById('fName').value.toLowerCase();
+        const fD = document.getElementById('fD').value, fM = document.getElementById('fM').value, fY = document.getElementById('fY').value;
+
+        archivedDays.forEach(day => {
+            const [d, m, y] = day.date.split('/');
+            if((!fD || d===fD) && (!fM || m===fM) && (!fY || y===fY)) {
+                day.clients.forEach(c => {
+                    if(!fN || c.name.toLowerCase().includes(fN)) {
+                        const prods = c.products.map(p => `${p.cod} - ${p.desc} (${p.note || ''})`).join('\n');
+                        rows.push([day.date, c.name, c.addr, c.city, c.tel, prods, "€ " + c.total.toFixed(2)]);
+                        grandTotal += c.total;
+                    }
+                });
+            }
+        });
+
+        doc.setFontSize(16); doc.setFont(undefined, 'bold');
+        doc.text("REPORT ARCHIVIO CONSEGNE", 14, 15);
+
+        doc.autoTable({
+            head: [['Data', 'Cliente', 'Indirizzo', 'Comune', 'Tel', 'Prodotti (Cod | Descrizione | € | Note)', 'Totale']],
+            body: rows,
+            startY: 22,
+            theme: 'grid',
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [69, 90, 100], textColor: 255 },
+            columnStyles: { 
+                0: { cellWidth: 20 }, 
+                4: { cellWidth: 20 }, // Ridotta colonna Tel
+                5: { cellWidth: 90 }, 
+                6: { halign: 'right', cellWidth: 35 } // Allargata colonna Totale
+            }
+        });
+
+        // Logica per stampare il totale solo all'ultima pagina
+        const finalY = doc.lastAutoTable.finalY;
+        const pageHeight = doc.internal.pageSize.height;
+
+        if (finalY > pageHeight - 25) {
+            doc.addPage();
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'bold');
+            doc.text("TOTALE REPORT: € " + grandTotal.toFixed(2), 280, 20, { align: 'right' });
+        } else {
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'bold');
+            doc.setFillColor(240, 240, 240);
+            doc.rect(200, finalY + 2, 83, 10, 'F');
+            doc.text("TOTALE REPORT: € " + grandTotal.toFixed(2), 280, finalY + 9, { align: 'right' });
+        }
+
+        doc.save(`Report_Archivio_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.pdf`);
+    }
+
+    function renderArchive() {
+        const body = document.getElementById('archive-table-body'); body.innerHTML = ""; let total = 0;
+        const fN = document.getElementById('fName').value.toLowerCase();
+        const fD = document.getElementById('fD').value, fM = document.getElementById('fM').value, fY = document.getElementById('fY').value;
+        archivedDays.forEach((day, dIdx) => {
+            const [d, m, y] = day.date.split('/');
+            if((!fD || d===fD) && (!fM || m===fM) && (!fY || y===fY)) {
+                day.clients.forEach((c, cIdx) => {
+                    if(!fN || c.name.toLowerCase().includes(fN)) {
+                        total += c.total;
+                        const tr = document.createElement('tr');
+                        const prodList = c.products.map(p => `• ${p.cod} - ${p.desc}`).join('<br>');
+                        tr.innerHTML = `<td>${day.date}</td><td><b>${c.name}</b></td><td>${c.addr} - ${c.city}</td><td>${c.tel}</td><td style="font-size:9px">${prodList}</td><td style="font-weight:bold">€ ${c.total.toFixed(2)}</td><td class="no-print col-action"><button class="btn" onclick="restoreFromArchive(${dIdx}, ${cIdx})">♻️</button></td>`;
+                        body.appendChild(tr);
+                    }
+                });
+            }
+        });
+        document.getElementById('total-visible-archive').innerText = total.toFixed(2);
+    }
+
+    async function restoreFromArchive(dIdx, cIdx) { addWaitingClient(archivedDays[dIdx].clients[cIdx], 'waiting-body'); archivedDays[dIdx].clients.splice(cIdx, 1); if(archivedDays[dIdx].clients.length === 0) archivedDays.splice(dIdx, 1); renderArchive(); await requestSave(); }
+    function showMainPage() { document.getElementById('archive-view').style.display='none'; document.getElementById('main-view').style.display='block'; }
+    function showArchivePage() { document.getElementById('main-view').style.display='none'; document.getElementById('archive-view').style.display='block'; renderArchive(); }
+</script>
+</body>
+</html>
