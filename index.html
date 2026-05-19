@@ -175,7 +175,7 @@
     
     async function requestSave() { 
         if (!fileHandle) {
-            alert("Nessun file selezionato! Per favore, seleziona il file JSON.");
+            alert("Nessun file selezionat! Per favore, seleziona il file JSON.");
             await pickJsonFile();
             return;
         }
@@ -356,8 +356,6 @@
             theme: 'grid',
             styles: { fontSize: 8 },
             headStyles: { fillColor: [69, 90, 100], textColor: 255 },
-            foot: [['', '', '', '', '', '', 'TOTALE GIRO:', '€ ' + grandTotal.toFixed(2)]],
-            footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' },
             columnStyles: { 
                 0: { cellWidth: 20 }, 
                 4: { cellWidth: 25 }, 
@@ -366,6 +364,37 @@
                 7: { halign: 'right', cellWidth: 30 } 
             }
         });
+
+        // Calcolo dello scorporo economico (Imponibile e IVA 22%)
+        const ivaPercent = 22;
+        const imponibile = grandTotal / (1 + (ivaPercent / 100));
+        const impostaIva = grandTotal - imponibile;
+
+        const finalY = doc.lastAutoTable.finalY;
+        const pageHeight = doc.internal.pageSize.height;
+
+        // Gestione cambio pagina per i totali
+        if (finalY > pageHeight - 35) {
+            doc.addPage();
+            stampaBloccoTotaliGiro(doc, 20, grandTotal, imponibile, impostaIva);
+        } else {
+            stampaBloccoTotaliGiro(doc, finalY + 5, grandTotal, imponibile, impostaIva);
+        }
+
+        function stampaBloccoTotaliGiro(pdfDoc, startY, totale, imp, iva) {
+            pdfDoc.setFontSize(10);
+            pdfDoc.setFont(undefined, 'normal');
+            
+            pdfDoc.setFillColor(245, 245, 245);
+            pdfDoc.rect(190, startY, 93, 24, 'F');
+            
+            pdfDoc.text("IMPONIBILE: € " + imp.toFixed(2), 280, startY + 6, { align: 'right' });
+            pdfDoc.text("IVA (22%): € " + iva.toFixed(2), 280, startY + 12, { align: 'right' });
+            
+            pdfDoc.setFont(undefined, 'bold');
+            pdfDoc.text("TOTALE GIRO: € " + totale.toFixed(2), 280, startY + 19, { align: 'right' });
+        }
+
         doc.save(`Giro_Consegne_${date.replace(/\//g, '-')}.pdf`);
     }
 
@@ -402,27 +431,39 @@
             headStyles: { fillColor: [69, 90, 100], textColor: 255 },
             columnStyles: { 
                 0: { cellWidth: 20 }, 
-                4: { cellWidth: 20 }, // Ridotta colonna Tel
+                4: { cellWidth: 20 }, 
                 5: { cellWidth: 90 }, 
-                6: { halign: 'right', cellWidth: 35 } // Allargata colonna Totale
+                6: { halign: 'right', cellWidth: 35 } 
             }
         });
 
-        // Logica per stampare il totale solo all'ultima pagina
+        // Calcolo dello scorporo economico (Imponibile e IVA 22%)
+        const ivaPercent = 22;
+        const imponibile = grandTotal / (1 + (ivaPercent / 100));
+        const impostaIva = grandTotal - imponibile;
+
         const finalY = doc.lastAutoTable.finalY;
         const pageHeight = doc.internal.pageSize.height;
 
-        if (finalY > pageHeight - 25) {
+        if (finalY > pageHeight - 35) {
             doc.addPage();
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'bold');
-            doc.text("TOTALE REPORT: € " + grandTotal.toFixed(2), 280, 20, { align: 'right' });
+            stampaBloccoTotali(doc, 20, grandTotal, imponibile, impostaIva);
         } else {
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'bold');
-            doc.setFillColor(240, 240, 240);
-            doc.rect(200, finalY + 2, 83, 10, 'F');
-            doc.text("TOTALE REPORT: € " + grandTotal.toFixed(2), 280, finalY + 9, { align: 'right' });
+            stampaBloccoTotali(doc, finalY + 5, grandTotal, imponibile, impostaIva);
+        }
+
+        function stampaBloccoTotali(pdfDoc, startY, totale, imp, iva) {
+            pdfDoc.setFontSize(10);
+            pdfDoc.setFont(undefined, 'normal');
+            
+            pdfDoc.setFillColor(245, 245, 245);
+            pdfDoc.rect(190, startY, 93, 24, 'F');
+            
+            pdfDoc.text("IMPONIBILE: € " + imp.toFixed(2), 280, startY + 6, { align: 'right' });
+            pdfDoc.text("IVA (22%): € " + iva.toFixed(2), 280, startY + 12, { align: 'right' });
+            
+            pdfDoc.setFont(undefined, 'bold');
+            pdfDoc.text("TOTALE REPORT: € " + totale.toFixed(2), 280, startY + 19, { align: 'right' });
         }
 
         doc.save(`Report_Archivio_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.pdf`);
