@@ -16,7 +16,7 @@
         .container { width: 98%; margin: 10px auto; }
         table { width: 100%; border-collapse: collapse; background: white; table-layout: fixed; margin-bottom: 10px; }
         th { background: #eceff1; color: #455a64; padding: 5px; border: 1px solid #cfd8dc; font-size: 9px; text-transform: uppercase; }
-        td { border: 1px solid #cfd8dc; padding: 3px; vertical-align: top; overflow: hidden; }
+       td { border: 1px solid #cfd8dc; padding: 3px; vertical-align: top; overflow: hidden; }
         .col-sel { width: 30px; } .col-cli { width: 200px; } .col-addr { width: 200px; } .col-com { width: 130px; } .col-tel { width: 110px; } .col-fasc { width: 40px; } .col-tot { width: 60px; } .col-action { width: 55px; text-align: center; }
         .day-container { background: white; border-radius: 4px; margin-bottom: 30px; border: 1px solid #cfd8dc; }
         .day-header { background: var(--primary); color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -30,9 +30,9 @@
     </style>
 </head>
 <body>
-
+ 
 <div id="notification-banner"></div>
-
+ 
 <div id="date-modal">
     <div style="background:white; padding:25px; border-radius:10px; text-align:center; box-shadow:0 5px 15px rgba(0,0,0,0.3)">
         <h3 style="margin-top:0">Seleziona Data Consegna</h3>
@@ -43,7 +43,7 @@
         </div>
     </div>
 </div>
-
+ 
 <div id="startup-overlay" class="startup-overlay">
     <div class="startup-card">
         <h2 style="color: var(--accent); margin:0">🚀 Logistica Pro V30</h2>
@@ -58,7 +58,7 @@
         <button id="btn-start" class="btn" style="background:var(--accent); color:white; padding: 15px; width: 100%; font-size: 14px;" onclick="finalizeStartup()" disabled>AVVIA SISTEMA</button>
     </div>
 </div>
-
+ 
 <div id="main-view">
     <div id="top-bar" class="no-print">
         <div style="display:flex; align-items:center; gap:10px">
@@ -87,7 +87,7 @@
         <div id="mainContainer"></div>
     </div>
 </div>
-
+ 
 <div id="archive-view">
     <div id="top-bar" class="no-print" style="background: var(--archive)">
         <button class="btn" style="background:white; color:var(--archive)" onclick="showMainPage()">⬅️ TORNA</button>
@@ -113,15 +113,15 @@
         </div>
     </div>
 </div>
-
+ 
 <script>
     let productDatabase = [];
     let archivedDays = [];
     let fileHandle = null;
     let initialData = null;
-
+ 
     function notify(msg) { const n = document.getElementById('notification-banner'); n.innerText = msg; n.style.display = 'block'; setTimeout(() => n.style.display = 'none', 2500); }
-
+ 
     function sortDays() {
         const container = document.getElementById('mainContainer');
         const days = Array.from(container.querySelectorAll('.day-container'));
@@ -132,33 +132,33 @@
         });
         days.forEach(d => container.appendChild(d));
     }
-
-    async function pickJsonFile(isReselect = false) { 
-        try { 
-            [fileHandle] = await window.showOpenFilePicker({ 
+ 
+    async function pickJsonFile(isReselect = false) {
+        try {
+            [fileHandle] = await window.showOpenFilePicker({
                 types: [{ description: 'JSON', accept: {'application/json': ['.json']} }],
                 multiple: false
-            }); 
-            const file = await fileHandle.getFile(); 
-            initialData = JSON.parse(await file.text()); 
+            });
+            const file = await fileHandle.getFile();
+            initialData = JSON.parse(await file.text());
             
-            document.getElementById('boxJson').classList.add('loaded'); 
-            document.getElementById('textJson').innerText = "✅ DATABASE CARICATO: " + file.name; 
+            document.getElementById('boxJson').classList.add('loaded');
+            document.getElementById('textJson').innerText = "✅ DATABASE CARICATO: " + file.name;
             
-            if(!isReselect) checkReady(); 
+            if(!isReselect) checkReady();
             else notify("✅ Percorso file aggiornato!");
-        } catch (e) { 
+        } catch (e) {
             console.error(e);
             notify("❌ Selezione annullata");
-        } 
+        }
     }
-    
+   
     function handleExcelLoad(input) { const reader = new FileReader(); reader.onload = (e) => { const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'}); productDatabase = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]).map(i => { let n = {}; for (let k in i) n[k.toLowerCase().trim()] = i[k]; return n; }); document.getElementById('boxExcel').classList.add('loaded'); document.getElementById('textExcel').innerText = "✅ LISTINO CARICATO"; checkReady(); }; reader.readAsArrayBuffer(input.files[0]); }
-    
+   
     function checkReady() { if (initialData && productDatabase.length > 0) document.getElementById('btn-start').disabled = false; }
-    
-    function finalizeStartup() { 
-        if (initialData.backlog) initialData.backlog.reverse().forEach(c => addWaitingClient(c, 'waiting-body')); 
+   
+    function finalizeStartup() {
+        if (initialData.backlog) initialData.backlog.reverse().forEach(c => addWaitingClient(c, 'waiting-body'));
         if (initialData.activeDays) {
             initialData.activeDays.forEach(day => {
                 const dId = Date.now() + Math.random();
@@ -166,58 +166,58 @@
                 day.clients.reverse().forEach(c => addWaitingClient(c, `tbody-${dId}`));
             });
         }
-        archivedDays = initialData.archive || []; 
-        sortDays(); 
-        document.getElementById('startup-overlay').style.display = 'none'; 
-        document.getElementById('main-view').style.display = 'block'; 
-        recalcAll(); 
+        archivedDays = initialData.archive || [];
+        sortDays();
+        document.getElementById('startup-overlay').style.display = 'none';
+        document.getElementById('main-view').style.display = 'block';
+        recalcAll();
     }
-    
-    async function requestSave() { 
+   
+    async function requestSave() {
         if (!fileHandle) {
             alert("Nessun file selezionat! Per favore, seleziona il file JSON.");
             await pickJsonFile();
             return;
         }
-        
-        const data = { 
-            backlog: Array.from(document.querySelectorAll('#waiting-body .client-row')).map(row => getRowData(row)), 
-            activeDays: Array.from(document.querySelectorAll('.day-container')).map(block => ({ 
-                date: block.querySelector('.day-date-val').innerText, 
-                clients: Array.from(block.querySelectorAll('.client-row')).map(row => getRowData(row)) 
-            })), 
-            archive: archivedDays 
-        }; 
-
-        try { 
+       
+        const data = {
+            backlog: Array.from(document.querySelectorAll('#waiting-body .client-row')).map(row => getRowData(row)),
+            activeDays: Array.from(document.querySelectorAll('.day-container')).map(block => ({
+                date: block.querySelector('.day-date-val').innerText,
+                clients: Array.from(block.querySelectorAll('.client-row')).map(row => getRowData(row))
+            })),
+            archive: archivedDays
+        };
+ 
+        try {
             const options = { mode: 'readwrite' };
             if ((await fileHandle.queryPermission(options)) !== 'granted') {
                 if ((await fileHandle.requestPermission(options)) !== 'granted') {
                     throw new Error("Permessi negati");
                 }
             }
-
-            const writable = await fileHandle.createWritable(); 
-            await writable.write(JSON.stringify(data, null, 2)); 
-            await writable.close(); 
+ 
+            const writable = await fileHandle.createWritable();
+            await writable.write(JSON.stringify(data, null, 2));
+            await writable.close();
             notify("💾 Backup aggiornato su " + (await fileHandle.getFile()).name);
-        } catch (e) { 
+        } catch (e) {
             console.error(e);
             alert("ERRORE DI SCRITTURA: Connessione al file interrotta o permessi scaduti.\n\nSeleziona nuovamente il file nella finestra che si aprirà per ripristinare il salvataggio.");
-            await pickJsonFile(true); 
+            await pickJsonFile(true);
             if(fileHandle) await requestSave();
-        } 
+        }
     }
-
+ 
     function openDateModal() {
         const sel = document.querySelectorAll('.client-sel:checked');
         if (sel.length === 0) return alert("Seleziona ordini!");
         document.getElementById('calendar-input').valueAsDate = new Date();
         document.getElementById('date-modal').style.display = 'flex';
     }
-
+ 
     function closeDateModal() { document.getElementById('date-modal').style.display = 'none'; }
-
+ 
     async function confirmDateSelection() {
         const rawDate = document.getElementById('calendar-input').value;
         if(!rawDate) return alert("Scegli una data!");
@@ -226,8 +226,8 @@
         closeDateModal();
         createNewDayFromSelected(formattedDate);
     }
-
-    async function createNewDayFromSelected(date) { 
+ 
+    async function createNewDayFromSelected(date) {
         const sel = document.querySelectorAll('.client-sel:checked');
         const archIdx = archivedDays.findIndex(a => a.date === date);
         if (archIdx !== -1) {
@@ -239,27 +239,27 @@
                 archivedDays.splice(archIdx, 1);
             } else { return; }
         }
-
-        let existingDay = Array.from(document.querySelectorAll('.day-container')).find(block => block.querySelector('.day-date-val').innerText === date); 
+ 
+        let existingDay = Array.from(document.querySelectorAll('.day-container')).find(block => block.querySelector('.day-date-val').innerText === date);
         let targetTbodyId = null;
-        if (existingDay) { targetTbodyId = existingDay.querySelector('tbody').id; } 
-        else { 
-            const dId = Date.now() + Math.random(); 
-            renderDayBlock(dId, date); 
+        if (existingDay) { targetTbodyId = existingDay.querySelector('tbody').id; }
+        else {
+            const dId = Date.now() + Math.random();
+            renderDayBlock(dId, date);
             targetTbodyId = `tbody-${dId}`;
-        } 
-
-        sel.forEach(cb => { 
-            const row = cb.closest('.client-row'); 
-            cb.checked = false; 
-            row.querySelector('.col-sel-cell')?.remove(); 
-            const targetTbody = document.getElementById(targetTbodyId); 
-            targetTbody.insertBefore(row, targetTbody.firstChild); 
-            row.querySelector('.move-btns').style.display = 'inline-block'; 
-        }); 
-        sortDays(); recalcAll(); await requestSave(); 
+        }
+ 
+        sel.forEach(cb => {
+            const row = cb.closest('.client-row');
+            cb.checked = false;
+            row.querySelector('.col-sel-cell')?.remove();
+            const targetTbody = document.getElementById(targetTbodyId);
+            targetTbody.insertBefore(row, targetTbody.firstChild);
+            row.querySelector('.move-btns').style.display = 'inline-block';
+        });
+        sortDays(); recalcAll(); await requestSave();
     }
-
+ 
     function renderDayBlock(dId, date) {
         const div = document.createElement('div');
         div.className = 'day-container';
@@ -267,7 +267,7 @@
         div.innerHTML = ` <div class="day-header no-print"> <b>🚚 GIRO: <span class="day-date-val">${date}</span></b> <div> <button class="btn" style="background:#27ae60; color:white" onclick="archiveDay('${dId}')">📥 ARCHIVIA</button> <button class="btn" style="background:#e67e22; color:white" onclick="exportDayPDF('${dId}', '${date}')">📄 PDF</button> <button class="btn" style="background:var(--danger); color:white" onclick="deleteFullDay('${dId}')">🗑️ ELIMINA</button> </div> </div> <table> <thead> <tr> <th class="col-cli">Cliente</th><th class="col-addr">Indirizzo</th><th class="col-com">Comune</th><th class="col-tel">Tel</th><th class="col-fasc">Fasc.</th><th>Prodotti</th><th class="col-tot">Totale</th><th class="col-action">Azioni</th> </tr> </thead> <tbody id="tbody-${dId}"></tbody> </table> <div style="padding:8px; text-align:right; font-weight:bold">TOTALE GIRO: € <span class="day-tot-val">0.00</span></div> `;
         document.getElementById('mainContainer').appendChild(div);
     }
-
+ 
     function addWaitingClient(data = null, targetTbodyId = 'waiting-body') {
         const tr = document.createElement('tr');
         tr.className = "client-row";
@@ -278,7 +278,7 @@
         else addProductRow(tr.querySelector('.no-print'));
         recalcAll();
     }
-
+ 
     async function addProductRow(btn, data = null) {
         const tbody = btn.previousElementSibling.querySelector('tbody');
         const tr = document.createElement('tr');
@@ -286,34 +286,34 @@
         tbody.appendChild(tr);
         recalcAll();
     }
-
+ 
     async function removeProd(el) { if(confirm("Eliminare prodotto?")) { el.closest('tr').remove(); recalcAll(); await requestSave(); } }
     function lookup(el) { const item = productDatabase.find(p => String(p.codice) === el.value.trim()); if (item) { const tr = el.parentElement.parentElement; tr.querySelector('.p-desc').value = item.descrizione || ""; tr.querySelector('.p-cost-input').value = parseFloat(item.costo || 0).toFixed(2); recalcAll(); } }
     function recalcAll() { document.querySelectorAll('.client-row').forEach(row => { let sub = 0; row.querySelectorAll('.p-cost-input').forEach(i => sub += parseFloat(i.value) || 0); row.querySelector('.c-total-val').innerText = sub.toFixed(2); }); document.querySelectorAll('.day-container').forEach(day => { let daySum = 0; day.querySelectorAll('.c-total-val').forEach(v => daySum += parseFloat(v.innerText) || 0); day.querySelector('.day-tot-val').innerText = daySum.toFixed(2); }); }
     async function moveRow(btn, direction) { const row = btn.closest('.client-row'); const tbody = row.parentElement; if (direction === -1 && row.previousElementSibling) tbody.insertBefore(row, row.previousElementSibling); else if (direction === 1 && row.nextElementSibling) tbody.insertBefore(row.nextElementSibling, row); await requestSave(); }
-    
-    async function deleteRow(btn) { 
+   
+    async function deleteRow(btn) {
         const row = btn.closest('.client-row');
         const isFromGiro = row.parentElement.id !== 'waiting-body';
-        if (confirm(isFromGiro ? "Spostare l'ordine negli 'Ordini in Attesa'?" : "Eliminare l'ordine?")) { 
+        if (confirm(isFromGiro ? "Spostare l'ordine negli 'Ordini in Attesa'?" : "Eliminare l'ordine?")) {
             if (isFromGiro) addWaitingClient(getRowData(row), 'waiting-body');
-            row.remove(); 
-            recalcAll(); 
-            await requestSave(); 
-        } 
+            row.remove();
+            recalcAll();
+            await requestSave();
+        }
     }
-
-    async function deleteFullDay(dId) { 
+ 
+    async function deleteFullDay(dId) {
         const block = document.getElementById(`day-block-${dId}`);
-        if(confirm("Eliminare il giro? Gli ordini torneranno in attesa.")) { 
+        if(confirm("Eliminare il giro? Gli ordini torneranno in attesa.")) {
             block.querySelectorAll('.client-row').forEach(r => addWaitingClient(getRowData(r), 'waiting-body'));
-            block.remove(); 
-            await requestSave(); 
-        } 
+            block.remove();
+            await requestSave();
+        }
     }
-
+ 
     async function archiveDay(dId) { if(!confirm("Archiviare?")) return; const block = document.getElementById(`day-block-${dId}`); archivedDays.push({ date: block.querySelector('.day-date-val').innerText, clients: Array.from(block.querySelectorAll('.client-row')).map(row => getRowData(row)) }); block.remove(); await requestSave(); }
-
+ 
     function getRowData(row) {
         return {
             name: row.querySelector('.c-name').value,
@@ -330,27 +330,27 @@
             }))
         };
     }
-
+ 
     function exportDayPDF(dId, date) {
         const includeIva = confirm("Vuoi calcolare e mostrare l'IVA (22%) nel PDF?\nPremi 'OK' per includere l'IVA, 'Annulla' per esportare senza IVA.");
-
+ 
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('l', 'mm', 'a4');
         const rows = [];
         let grandTotal = 0;
         const container = document.getElementById(`day-block-${dId}`);
         const clients = Array.from(container.querySelectorAll('.client-row'));
-
+ 
         clients.forEach(c => {
             const data = getRowData(c);
             const prods = data.products.map(p => `${p.cod} - ${p.desc} (${p.note || ''})`).join('\n');
             rows.push([date, data.name, data.addr, data.city, data.tel, data.time, prods, "€ " + data.total.toFixed(2)]);
             grandTotal += data.total;
         });
-
+ 
         doc.setFontSize(16); doc.setFont(undefined, 'bold');
         doc.text("PROGRAMMA CONSEGNE: " + date, 14, 15);
-
+ 
         doc.autoTable({
             head: [['Data', 'Cliente', 'Indirizzo', 'Comune', 'Tel', 'Fasc.', 'Prodotti (Cod | Descrizione | € | Note)', 'Totale']],
             body: rows,
@@ -358,22 +358,22 @@
             theme: 'grid',
             styles: { fontSize: 8 },
             headStyles: { fillColor: [69, 90, 100], textColor: 255 },
-            columnStyles: { 
-                0: { cellWidth: 20 }, 
-                4: { cellWidth: 25 }, 
-                5: { cellWidth: 15 }, 
-                6: { cellWidth: 85 }, 
-                7: { halign: 'right', cellWidth: 30 } 
+            columnStyles: {
+                0: { cellWidth: 20 },
+                4: { cellWidth: 25 },
+                5: { cellWidth: 15 },
+                6: { cellWidth: 85 },
+                7: { halign: 'right', cellWidth: 30 }
             }
         });
-
+ 
         const ivaPercent = 22;
         const imponibile = grandTotal / (1 + (ivaPercent / 100));
         const impostaIva = grandTotal - imponibile;
-
+ 
         const finalY = doc.lastAutoTable.finalY;
         const pageHeight = doc.internal.pageSize.height;
-
+ 
         if (includeIva) {
             if (finalY > pageHeight - 35) {
                 doc.addPage();
@@ -389,13 +389,13 @@
                 stampaBloccoTotaliGiro(doc, finalY + 5, grandTotal, 0, 0, false);
             }
         }
-
+ 
         function stampaBloccoTotaliGiro(pdfDoc, startY, totale, imp, iva, showIva) {
             pdfDoc.setFontSize(10);
             pdfDoc.setFont(undefined, 'normal');
-            
+           
             pdfDoc.setFillColor(245, 245, 245);
-            
+           
             if (showIva) {
                 pdfDoc.rect(190, startY, 93, 24, 'F');
                 pdfDoc.text("IMPONIBILE: € " + imp.toFixed(2), 280, startY + 6, { align: 'right' });
@@ -408,20 +408,20 @@
                 pdfDoc.text("TOTALE GIRO: € " + totale.toFixed(2), 280, startY + 9, { align: 'right' });
             }
         }
-
+ 
         doc.save(`Giro_Consegne_${date.replace(/\//g, '-')}.pdf`);
     }
-
+ 
     function exportArchivePDF() {
         const includeIva = confirm("Vuoi calcolare e mostrare l'IVA (22%) nel report d'archivio?\nPremi 'OK' per includere l'IVA, 'Annulla' per esportare senza IVA.");
-
+ 
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('l', 'mm', 'a4');
         const rows = [];
         let grandTotal = 0;
         const fN = document.getElementById('fName').value.toLowerCase();
         const fD = document.getElementById('fD').value, fM = document.getElementById('fM').value, fY = document.getElementById('fY').value;
-
+ 
         archivedDays.forEach(day => {
             const [d, m, y] = day.date.split('/');
             if((!fD || d===fD) && (!fM || m===fM) && (!fY || y===fY)) {
@@ -434,10 +434,10 @@
                 });
             }
         });
-
+ 
         doc.setFontSize(16); doc.setFont(undefined, 'bold');
         doc.text("REPORT ARCHIVIO CONSEGNE", 14, 15);
-
+ 
         doc.autoTable({
             head: [['Data', 'Cliente', 'Indirizzo', 'Comune', 'Tel', 'Prodotti (Cod | Descrizione | € | Note)', 'Totale']],
             body: rows,
@@ -445,21 +445,21 @@
             theme: 'grid',
             styles: { fontSize: 8 },
             headStyles: { fillColor: [69, 90, 100], textColor: 255 },
-            columnStyles: { 
-                0: { cellWidth: 20 }, 
-                4: { cellWidth: 20 }, 
-                5: { cellWidth: 90 }, 
-                6: { halign: 'right', cellWidth: 35 } 
+            columnStyles: {
+                0: { cellWidth: 20 },
+                4: { cellWidth: 20 },
+                5: { cellWidth: 90 },
+                6: { halign: 'right', cellWidth: 35 }
             }
         });
-
+ 
         const ivaPercent = 22;
         const imponibile = grandTotal / (1 + (ivaPercent / 100));
         const impostaIva = grandTotal - imponibile;
-
+ 
         const finalY = doc.lastAutoTable.finalY;
         const pageHeight = doc.internal.pageSize.height;
-
+ 
         if (includeIva) {
             if (finalY > pageHeight - 35) {
                 doc.addPage();
@@ -475,13 +475,13 @@
                 stampaBloccoTotali(doc, finalY + 5, grandTotal, 0, 0, false);
             }
         }
-
+ 
         function stampaBloccoTotali(pdfDoc, startY, totale, imp, iva, showIva) {
             pdfDoc.setFontSize(10);
             pdfDoc.setFont(undefined, 'normal');
-            
+           
             pdfDoc.setFillColor(245, 245, 245);
-            
+           
             if (showIva) {
                 pdfDoc.rect(190, startY, 93, 24, 'F');
                 pdfDoc.text("IMPONIBILE: € " + imp.toFixed(2), 280, startY + 6, { align: 'right' });
@@ -494,10 +494,10 @@
                 pdfDoc.text("TOTALE REPORT: € " + totale.toFixed(2), 280, startY + 9, { align: 'right' });
             }
         }
-
+ 
         doc.save(`Report_Archivio_${new Date().toLocaleDateString('it-IT').replace(/\//g, '-')}.pdf`);
     }
-
+ 
     function renderArchive() {
         const body = document.getElementById('archive-table-body'); body.innerHTML = ""; let total = 0;
         const fN = document.getElementById('fName').value.toLowerCase();
@@ -518,7 +518,7 @@
         });
         document.getElementById('total-visible-archive').innerText = total.toFixed(2);
     }
-
+ 
     async function restoreFromArchive(dIdx, cIdx) { addWaitingClient(archivedDays[dIdx].clients[cIdx], 'waiting-body'); archivedDays[dIdx].clients.splice(cIdx, 1); if(archivedDays[dIdx].clients.length === 0) archivedDays.splice(dIdx, 1); renderArchive(); await requestSave(); }
     function showMainPage() { document.getElementById('archive-view').style.display='none'; document.getElementById('main-view').style.display='block'; }
     function showArchivePage() { document.getElementById('main-view').style.display='none'; document.getElementById('archive-view').style.display='block'; renderArchive(); }
